@@ -16,8 +16,12 @@ mod model {
     use serde::Serialize;
 
     use stremio_core::deep_links::SearchHistoryItemDeepLinks;
+    use stremio_core::runtime::Env;
     use stremio_core::types::{
-        events::Events, notifications::NotificationItem, resource::MetaItemId,
+        events::Events,
+        library::{library_stats, LibraryStats},
+        notifications::NotificationItem,
+        resource::MetaItemId,
     };
     use url::Url;
 
@@ -31,6 +35,7 @@ mod model {
         pub search_history: Vec<SearchHistoryItem<'a>>,
         pub events: &'a Events,
         pub streaming_server_urls: Vec<StreamingServerUrlItem>,
+        pub library_stats: LibraryStats,
     }
 
     #[derive(Serialize)]
@@ -125,6 +130,7 @@ mod model {
                     })
                     .sorted_by(|a, b| Ord::cmp(&a.mtime, &b.mtime))
                     .collect(),
+                library_stats: library_stats(ctx.library.items.values(), WebEnv::now()),
             }
         }
     }
