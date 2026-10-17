@@ -43,6 +43,14 @@ pub enum ActionCtx {
     LogoutTrakt,
     UpgradeAddon(Descriptor),
     UninstallAddon(Descriptor),
+    /// Moves an installed addon to the given index of the addons collection.
+    ///
+    /// The index is clamped to the last position of the collection.
+    #[serde(rename_all = "camelCase")]
+    MoveAddon {
+        transport_url: Url,
+        index: usize,
+    },
     UpdateSettings(ProfileSettings),
     AddToLibrary(MetaItemPreview),
     RemoveFromLibrary(String),

@@ -113,6 +113,10 @@ pub enum Event {
         transport_url: Url,
         id: String,
     },
+    AddonMoved {
+        transport_url: Url,
+        index: usize,
+    },
     SettingsUpdated {
         settings: Settings,
     },

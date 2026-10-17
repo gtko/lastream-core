@@ -175,6 +175,54 @@ pub fn update_profile<E: Env + 'static>(
             .join(push_to_api_effects)
             .join(Effects::msg(Msg::Internal(Internal::ProfileChanged)))
         }
+        Msg::Action(Action::Ctx(ActionCtx::MoveAddon {
+            transport_url,
+            index,
+        })) => {
+            if profile.addons_locked {
+                return addon_move_error_effects(
+                    transport_url,
+                    *index,
+                    OtherError::UserAddonsAreLocked,
+                );
+            }
+
+            let addon_position = match profile
+                .addons
+                .iter()
+                .position(|addon| addon.transport_url == *transport_url)
+            {
+                Some(addon_position) => addon_position,
+                None => {
+                    return addon_move_error_effects(
+                        transport_url,
+                        *index,
+                        OtherError::AddonNotInstalled,
+                    )
+                }
+            };
+            // the addon can be moved up to the last position of the collection
+            let next_position = (*index).min(profile.addons.len() - 1);
+            if next_position == addon_position {
+                return Effects::none().unchanged();
+            }
+            let addon = profile.addons.remove(addon_position);
+            profile.addons.insert(next_position, addon);
+
+            let push_to_api_effects = match profile.auth_key() {
+                Some(auth_key) => {
+                    Effects::one(push_addons_to_api::<E>(profile.addons.to_owned(), auth_key))
+                        .unchanged()
+                }
+                _ => Effects::none().unchanged(),
+            };
+            Effects::msg(Msg::Event(Event::AddonMoved {
+                transport_url: transport_url.to_owned(),
+                index: next_position,
+            }))
+            .join(push_to_api_effects)
+            .join(Effects::msg(Msg::Internal(Internal::ProfileChanged)))
+        }
         Msg::Internal(Internal::UninstallAddon(addon)) => {
             if profile.addons_locked {
                 return addon_uninstall_error_effects(addon, OtherError::UserAddonsAreLocked);
@@ -588,6 +636,16 @@ fn addon_uninstall_error_effects(addon: &Descriptor, error: OtherError) -> Effec
         Event::AddonUninstalled {
             transport_url: addon.transport_url.to_owned(),
             id: addon.manifest.id.to_owned(),
+        },
+    )
+}
+
+fn addon_move_error_effects(transport_url: &url::Url, index: usize, error: OtherError) -> Effects {
+    addon_action_error_effects(
+        error,
+        Event::AddonMoved {
+            transport_url: transport_url.to_owned(),
+            index,
         },
     )
 }
